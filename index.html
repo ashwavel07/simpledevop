@@ -1,13 +1,213 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-    <link rel="stylesheet" href="file1.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Employee Leave Tracker</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      font-family: Arial, sans-serif; 
+      padding: 20px; 
+      background: #f5f5f5;
+    }
+    .container { 
+      max-width: 1000px; 
+      margin: 0 auto; 
+      background: white; 
+      padding: 20px; 
+      border-radius: 8px; 
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    h1 { margin-bottom: 20px; color: #333; }
+    h2 { margin: 20px 0 10px; color: #555; }
+    form { 
+      display: grid; 
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+      gap: 10px; 
+      margin-bottom: 20px; 
+    }
+    input, select, button { 
+      padding: 10px; 
+      border: 1px solid #ddd; 
+      border-radius: 4px; 
+      font-size: 14px;
+    }
+    button { 
+      background: #4CAF50; 
+      color: white; 
+      cursor: pointer; 
+      border: none;
+    }
+    button:hover { background: #45a049; }
+    .delete-btn { background: #f44336; }
+    .delete-btn:hover { background: #da190b; }
+    .filters { 
+      margin: 20px 0; 
+      display: flex; 
+      gap: 10px; 
+      align-items: center;
+    }
+    table { 
+      width: 100%; 
+      border-collapse: collapse; 
+      margin-top: 10px;
+    }
+    th, td { 
+      border: 1px solid #ddd; 
+      padding: 12px; 
+      text-align: left;
+    }
+    th { background: #4CAF50; color: white; }
+    tr:nth-child(even) { background: #f9f9f9; }
+    .stats { 
+      margin: 15px 0; 
+      padding: 10px; 
+      background: #e3f2fd; 
+      border-radius: 4px;
+    }
+  </style>
 </head>
 <body>
-    <h1 class="clc">hello welcome to emp leva tracker app</h1>
-    <h1 class="clc">hello welcome to emp leva tracker app</h1>
+  <div class="container">
+    <h1>Employee Leave Tracker</h1>
+    
+    <h2>Submit Leave Request</h2>
+    <form id="leaveForm">
+      <input type="text" id="empId" placeholder="Employee ID" required>
+      <input type="text" id="empName" placeholder="Employee Name" required>
+      <select id="leaveType" required>
+        <option value="">Select Leave Type</option>
+        <option value="Casual">Casual</option>
+        <option value="Sick">Sick</option>
+        <option value="Annual">Annual</option>
+      </select>
+      <input type="date" id="fromDate" required>
+      <input type="date" id="toDate" required>
+      <button type="submit">Submit Request</button>
+    </form>
+
+    <div class="stats">
+      <strong>Total Requests: <span id="totalCount">0</span></strong> |
+      Casual: <span id="casualCount">0</span> |
+      Sick: <span id="sickCount">0</span> |
+      Annual: <span id="annualCount">0</span>
+    </div>
+
+    <h2>All Leave Requests</h2>
+    <div class="filters">
+      <label>Filter by Type:</label>
+      <select id="filterType">
+        <option value="All">All</option>
+        <option value="Casual">Casual</option>
+        <option value="Sick">Sick</option>
+        <option value="Annual">Annual</option>
+      </select>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Emp ID</th>
+          <th>Name</th>
+          <th>Leave Type</th>
+          <th>From Date</th>
+          <th>To Date</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="leaveTableBody"></tbody>
+    </table>
+  </div>
+
+  <script>
+    let leaves = JSON.parse(localStorage.getItem('leaves')) || [];
+    
+    const form = document.getElementById('leaveForm');
+    const tableBody = document.getElementById('leaveTableBody');
+    const filterType = document.getElementById('filterType');
+
+    // Submit leave request
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      
+      const fromDate = document.getElementById('fromDate').value;
+      const toDate = document.getElementById('toDate').value;
+      
+      // Basic validation for Q2 Bug requirement
+      if (!fromDate || !toDate) {
+        alert('Error: From Date and To Date cannot be empty');
+        return;
+      }
+      
+      if (new Date(fromDate) > new Date(toDate)) {
+        alert('From Date cannot be after To Date');
+        return;
+      }
+
+      const newLeave = {
+        id: Date.now(),
+        empId: document.getElementById('empId').value,
+        empName: document.getElementById('empName').value,
+        leaveType: document.getElementById('leaveType').value,
+        fromDate: fromDate,
+        toDate: toDate
+      };
+
+      leaves.push(newLeave);
+      saveAndRender();
+      form.reset();
+    });
+
+    // Filter functionality - extra feature
+    filterType.addEventListener('change', renderTable);
+
+    // Delete/Cancel request
+    function deleteLeave(id) {
+      if (confirm('Cancel this leave request?')) {
+        leaves = leaves.filter(leave => leave.id !== id);
+        saveAndRender();
+      }
+    }
+
+    function saveAndRender() {
+      localStorage.setItem('leaves', JSON.stringify(leaves));
+      renderTable();
+      updateStats();
+    }
+
+    function renderTable() {
+      const filter = filterType.value;
+      const filteredLeaves = filter === 'All' 
+        ? leaves 
+        : leaves.filter(l => l.leaveType === filter);
+
+      tableBody.innerHTML = filteredLeaves.map(leave => `
+        <tr>
+          <td>${leave.empId}</td>
+          <td>${leave.empName}</td>
+          <td>${leave.leaveType}</td>
+          <td>${leave.fromDate}</td>
+          <td>${leave.toDate}</td>
+          <td><button class="delete-btn" onclick="deleteLeave(${leave.id})">Cancel</button></td>
+        </tr>
+      `).join('');
+    }
+
+    // Extra feature: Leave counter by type
+    function updateStats() {
+      document.getElementById('totalCount').textContent = leaves.length;
+      document.getElementById('casualCount').textContent = 
+        leaves.filter(l => l.leaveType === 'Casual').length;
+      document.getElementById('sickCount').textContent = 
+        leaves.filter(l => l.leaveType === 'Sick').length;
+      document.getElementById('annualCount').textContent = 
+        leaves.filter(l => l.leaveType === 'Annual').length;
+    }
+
+    // Initial render
+    renderTable();
+    updateStats();
+  </script>
 </body>
 </html>
